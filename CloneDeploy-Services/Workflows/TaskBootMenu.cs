@@ -120,7 +120,24 @@ namespace CloneDeploy_Services.Workflows
                 else
                 {
                     var clusterGroup = new ComputerServices().GetClusterGroup(_computer.Id);
-                    foreach (var tftpServer in _clusterGroupServices.GetClusterTftpServers(clusterGroup.Id))
+                    var tftpServers = _clusterGroupServices.GetClusterTftpServers(clusterGroup.Id);   // patch by Diederick Niehorster! See comment below. Ask Diederick
+                    if (tftpServers.Count == 0)
+                    {
+                        // no tftp server found for this cluster. I have seen that happen when using a
+                        // fake cluster where both members are different NICs on the same computer. That
+                        // means no secondary server can be defined for the cluster, which messes up
+                        // defining tftp role for for the cluster group (foreign key constraint failure
+                        // because there is no secondary server). Then we get count=0 here. Fall back to
+                        // seeing if the server we're on has tftp role defined in its cluster server role
+                        // and if so, use it
+                        if (SettingServices.GetSettingValue(SettingStrings.TftpServerRole).Equals("1"))
+                        {
+                            var fakeServer = new ClusterGroupServerEntity();
+                            fakeServer.ServerId = -1;    // only thing that needs to be set
+                            tftpServers.Add(fakeServer);
+                        }
+                    }
+                    foreach (var tftpServer in tftpServers)
                     {
                         foreach (var bootMenu in list)
                         {
@@ -194,7 +211,24 @@ namespace CloneDeploy_Services.Workflows
                 {
                     var clusterGroup = new ComputerServices().GetClusterGroup(_computer.Id);
                     var secondaryServer = new SecondaryServerEntity();
-                    foreach (var tftpServer in _clusterGroupServices.GetClusterTftpServers(clusterGroup.Id))
+                    var tftpServers = _clusterGroupServices.GetClusterTftpServers(clusterGroup.Id);   // patch by Diederick Niehorster! See comment below. Ask Diederick
+                    if (tftpServers.Count==0)
+                    {
+                        // no tftp server found for this cluster. I have seen that happen when using a
+                        // fake cluster where both members are different NICs on the same computer. That
+                        // means no secondary server can be defined for the cluster, which messes up
+                        // defining tftp role for for the cluster group (foreign key constraint failure
+                        // because there is no secondary server). Then we get count=0 here. Fall back to
+                        // seeing if the server we're on has tftp role defined in its cluster server role
+                        // and if so, use it
+                        if (SettingServices.GetSettingValue(SettingStrings.TftpServerRole).Equals("1"))
+                        {
+                            var fakeServer = new ClusterGroupServerEntity();
+                            fakeServer.ServerId = -1;    // only thing that needs to be set
+                            tftpServers.Add(fakeServer);
+                        }
+                    }
+                    foreach (var tftpServer in tftpServers)
                     {
                         if (tftpServer.ServerId == -1)
                         {
